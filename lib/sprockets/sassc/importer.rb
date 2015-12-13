@@ -13,6 +13,13 @@ module Sprockets
 
 				def import_for(full_path, parent_dir, options)
 					eval_content = evaluate(options[:sprockets][:context], full_path)
+					
+					# sassc doesn't support sass syntax, convert sass to scss
+					# before returning result.
+					if Pathname.new(full_path).basename.to_s.include?('.sass')
+						eval_content = SassC::Sass2Scss.convert(eval_content)
+					end
+					
 					SassC::Importer::Import.new(full_path, source: eval_content)
 				end
 				
@@ -24,14 +31,7 @@ module Sprockets
 					processors = context.environment.preprocessors(attributes.content_type) + attributes.engines.reverse
 					processors.delete_if { |processor| processor < Tilt::SassTemplate }
 					
-					result = context.evaluate(path, :processors => processors)
-					
-					# sassc doesn't support sass syntax, convert sass to scss
-					# before returning result.
-					if Pathname.new(path).basename.to_s.include?('.sass')
-						result = SassC::Sass2Scss.convert(result)
-					end
-					
+					context.evaluate(path, :processors => processors)
 				end
 			end
 			
@@ -90,7 +90,7 @@ module Sprockets
 
 			def imports(path, parent_path)
 				
-				puts "importer: \npath='#{path}'\nparent_path='#{parent_path}'\n"
+				puts "\nimporter: \npath='#{path}'\nparent_path='#{parent_path}'\n"
 				
 				# Resolve a glob
 				if m = path.match(GLOB)
@@ -109,9 +109,12 @@ module Sprockets
 				parent_dir, _ = File.split(parent_path)
 				
 				ctx = options[:sprockets][:context]
-				paths = collect_paths(ctx, path, parent_dir)
+				paths = collect_paths(ctx, path, parent_path)
 				
 				found_path = resolve_to_path(ctx, paths)
+				
+				puts "found_path=#{found_path}"
+				
 				record_import_as_dependency found_path
 				return Extension.new().import_for(found_path.to_s, parent_dir, options)
 
@@ -135,31 +138,39 @@ module Sprockets
 				search_paths = [specified_dir.to_s]
 				
 				# Find parent_dir's root
-				if specified_dir.relative?
-					
-					env_root_paths = env_paths.map {|p| Pathname.new(p) }
-					root_path = env_root_paths.detect do |env_root_path|
-						# Return the root path that contains `parent_dir`
-						parent_dir.to_s.start_with?(env_root_path.to_s)
-					end
-					root_path ||= Pathname.new(context.root_path)
-					
-					if parent_dir != root_path
-						# Get any remaining path relative to root
-						relative_path = Pathname.new(parent_path).relative_path_from(root_path)
-						search_paths.unshift(relative_path.join(specified_dir).to_s)
-					end
-					
+				env_root_paths = env_paths.map {|p| Pathname.new(p) }
+				root_path = env_root_paths.detect do |env_root_path|
+					# Return the root path that contains `parent_dir`
+					parent_dir.to_s.start_with?(env_root_path.to_s)
+				end
+				root_path ||= Pathname.new(context.root_path)
+				
+				if specified_dir.relative? && parent_dir != root_path
+					# Get any remaining path relative to root
+					relative_path = Pathname.new(parent_dir).relative_path_from(root_path)
+					search_paths.unshift(relative_path.join(specified_dir).to_s)
 				end
 				
 				
 				paths = search_paths.map { |search_path|
 					PREFIXS.map { |prefix|
 						file_name = prefix + specified_file
-						File.join(search_path, file_name)
+						
+						# Joining on '.' can reslove to the wrong file.
+						if search_path == '.'
+							file_name
+						else
+							# Only join if search_path is not '.'
+							File.join(search_path, file_name)
+						end
+						
+						
 					}
 				}.flatten
-								
+				
+				puts "paths=#{paths}"
+				
+				paths
 				
 				# parent_path = Pathname.new(parent_path)
 				# paths = [parent_path]
