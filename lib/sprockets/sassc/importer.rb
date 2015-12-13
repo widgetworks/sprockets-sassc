@@ -11,63 +11,58 @@ module Sprockets
 				end
 
 				def import_for(full_path, parent_dir, options)
-					SassC::Importer::Import.new(full_path)
+					eval_content = evaluate(options[:sprockets][:context], full_path)
+					SassC::Importer::Import.new(full_path, source: eval_content)
+				end
+				
+				# Returns the string to be passed to the Sass engine. We use
+				# Sprockets to process the file, but we remove any Sass processors
+				# because we need to let the Sass::Engine handle that.
+				def evaluate(context, path)
+					attributes = context.environment.attributes_for(path)
+					processors = context.environment.preprocessors(attributes.content_type) + attributes.engines.reverse
+					processors.delete_if { |processor| processor < Tilt::SassTemplate }
+					context.evaluate(path, :processors => processors)
 				end
 			end
-
-			class CSSExtension
+			
+			class CSSExtension < Extension
 				def postfix
 					".css"
 				end
-
-				def import_for(full_path, parent_dir, options)
-					import_path = full_path.gsub(/\.css$/,"")
-					SassC::Importer::Import.new(import_path)
-				end
+				
+				# def import_for(full_path, parent_dir, options)
+				# 	import_path = full_path.gsub(/\.css$/,"")
+				# 	SassC::Importer::Import.new(import_path)
+				# end
 			end
-
+			
 			class CssScssExtension < Extension
 				def postfix
 					".css.scss"
 				end
-
-				def import_for(full_path, parent_dir, options)
-					source = File.open(full_path, 'rb') { |f| f.read }
-					SassC::Importer::Import.new(full_path, source: source)
-				end
 			end
-
+			
 			class CssSassExtension < Extension
 				def postfix
 					".css.sass"
 				end
-
+				
 				def import_for(full_path, parent_dir, options)
-					sass = File.open(full_path, 'rb') { |f| f.read }
+					sass = evaluate(options[:sprockets][:context], full_path)
 					parsed_scss = SassC::Sass2Scss.convert(sass)
 					SassC::Importer::Import.new(full_path, source: parsed_scss)
 				end
 			end
-
+			
 			class SassERBExtension < Extension
 				def postfix
 					".sass.erb"
 				end
-
-				def import_for(full_path, parent_dir, options)
-					template = Tilt::ERBTemplate.new(full_path)
-					parsed_erb = template.render(options[:sprockets][:context], {})
-					parsed_scss = SassC::Sass2Scss.convert(parsed_erb)
-					SassC::Importer::Import.new(full_path, source: parsed_scss)
-				end
 			end
-
+			
 			class ERBExtension < Extension
-				def import_for(full_path, parent_dir, options)
-					template = Tilt::ERBTemplate.new(full_path)
-					parsed_erb = template.render(options[:sprockets][:context], {})
-					SassC::Importer::Import.new(full_path, source: parsed_erb)
-				end
+				
 			end
 
 			EXTENSIONS = [
@@ -86,7 +81,7 @@ module Sprockets
 
 			def imports(path, parent_path)
 				
-				puts "importer: path=\n#{path}\n#{parent_path}\n"
+				puts "importer: \npath='#{path}'\nparent_path='#{parent_path}'\n"
 				
 				# Resolve a glob
 				if m = path.match(GLOB)

@@ -15,7 +15,7 @@ describe Sprockets::Sassc do
     @root.destroy!
   end
 
-  it 'processes scss files normally', :focus => true do
+  it 'processes scss files normally' do
     @assets.file 'main.css.scss', '//= require dep'
     @assets.file 'dep.css.scss', 'body { color: blue; }'
     asset = @env['main.css']
@@ -58,7 +58,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports files with directives' do
+  it 'imports files with directives', :focus => true do
     @assets.file 'main.css.scss', %(@import "dep";)
     @assets.file 'dep.css', "/*\n *= require subdep\n */"
     @assets.file 'subdep.css.scss', "$color: blue;\nbody { color: $color; }"
