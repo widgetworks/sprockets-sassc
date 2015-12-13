@@ -105,52 +105,17 @@ module Sprockets
 			# Custom method to choose how to render the file -
 			# either with or without sourcemaps.
 			def render_data(data, context, locals)
-				css = ::SassC::Engine.new(data, sass_options).render()
+				puts "sass_template: data=#{data}"
+				
+				if (!data.strip.empty?)
+					# The sassc *must* be called with content, an empty string fails.
+					css = ::SassC::Engine.new(data, sass_options).render()
+				else
+					css = ''
+				end
+				
 				css
 			end
-
-
-			# # Custom method to choose how to render the file -
-			# # either with or without sourcemaps.
-			# def render_data(data, context, locals)
-			# 	# puts "\nscss_template evaluate\n\n"
-			# 	# puts "filename: #{eval_file}"
-			# 	#puts "root: #{context.environment.config.root}\n"
-			# 	# puts "methods: " + (context.methods.sort - Object.methods).join("\n") + "\n==========\n\n"
-
-			# 	# Check the config value to see if we should generate the sourcemap.
-
-			# 	puts "sourcemap: #{context.environment.machined.config.sass_sourcemap}"
-
-			# 	if (context.environment.machined.config.sass_sourcemap == true)
-			# 		puts "### with sourcemap"
-
-			# 		# Strip out .erb from filename.
-			# 		# mapName = File.basename(eval_file.sub(/\.erb/, ''), '.scss') + '.map'
-
-			# 		# Replace .scss with .map so we can detect when map files are requested.
-			# 		# mapName = File.basename(eval_file, '.scss') + '.map'
-			# 		mapName = File.basename(eval_file) + '.map'
-
-			# 		# Generate the css with sourcemaps relative to the invoked file.
-			# 		css, sourcemap = ::Sass::Engine.new(data, sass_options).render_with_sourcemap(mapName)
-
-			# 		# Render and store the sourcemap.
-			# 		mapJson = sourcemap.to_json(
-			# 			:type => :auto,
-			# 			:css_path => eval_file,
-			# 			:sourcemap_path => eval_file + '.map'
-			# 		)
-			# 		SourcemapCache.add(mapName, mapJson)
-
-			# 	else
-			# 		puts "!!! without sourcemap"
-
-			# 		css = ::Sass::Engine.new(data, sass_options).render
-			# 	end
-
-			# 	css
-			# end
 
 
 			# Returns a Sprockets-aware cache store for Sass::Engine.
