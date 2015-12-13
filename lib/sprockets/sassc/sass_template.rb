@@ -105,8 +105,6 @@ module Sprockets
 			# Custom method to choose how to render the file -
 			# either with or without sourcemaps.
 			def render_data(data, context, locals)
-				puts "sass_template: data=#{data}"
-				
 				if (!data.strip.empty?)
 					# The sassc *must* be called with content, an empty string fails.
 					css = ::SassC::Engine.new(data, sass_options).render()
@@ -158,11 +156,14 @@ module Sprockets
 			# Get the default, global Sass options. Start with Compass's
 			# options, if it's available.
 			def default_sass_options
-				if defined?(Compass)
-					merge_sass_options Compass.sass_engine_options.dup, Sprockets::Sassc.options
-				else
-					Sprockets::Sassc.options.dup
-				end
+				# if defined?(Compass)
+				# 	merge_sass_options Compass.sass_engine_options.dup, Sprockets::Sassc.options
+				# else
+				# 	Sprockets::Sassc.options.dup
+				# end
+				
+				# Disable Compass defaults.
+				Sprockets::Sassc.options.dup
 			end
 
 			# Merges two sets of `Sass::Engine` options, prepending
