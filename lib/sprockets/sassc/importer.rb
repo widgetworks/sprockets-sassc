@@ -73,7 +73,8 @@ module Sprockets
 			class ERBExtension < Extension
 				
 			end
-
+			
+			
 			EXTENSIONS = [
 				CssScssExtension.new,
 				CssSassExtension.new,
@@ -87,6 +88,10 @@ module Sprockets
 
 			PREFIXS = [ "", "_" ]
 			GLOB = /(\A|\/)(\*|\*\*\/\*)\z/
+			
+			# We only have one type of extension now, so only initialise it once.
+			EXTENSION = Extension.new()
+			
 
 			def imports(path, parent_path)
 				
@@ -94,9 +99,17 @@ module Sprockets
 				
 				# Resolve a glob
 				if m = path.match(GLOB)
+					
+					abs_parent = Pathname.new(parent_path)
+					if (abs_parent.relative?)
+						# Resolve relative `parent_path` to absolute with sprockets.
+						abs_parent = collect_and_resolve(options[:sprockets][:context], parent_path, nil)
+					end
+					
 					path = path.sub(m[0], "")
-					base = File.expand_path(path, File.dirname(parent_path))
-					return glob_imports(base, m[2], parent_path)
+					base = File.join(abs_parent.dirname, path)
+					# base = File.expand_path(path, File.dirname(parent_path))
+					return glob_imports(base, m[2], abs_parent)
 				end
 				
 				# Resolve a single file
@@ -116,39 +129,50 @@ module Sprockets
 				puts "found_path=#{found_path}"
 				
 				record_import_as_dependency found_path
-				return Extension.new().import_for(found_path.to_s, parent_dir, options)
+				
+				## TODO: Change this so we're not creating a new importer 
+				## every time?
+				return EXTENSION.import_for(found_path.to_s, parent_dir, options)
 
 				# SassC::Importer::Import.new(path)
 			end
 			
 			
+			# Helper method - resolve a relative file in sprockets.
+			def collect_and_resolve(context, path, parent_path = nil)
+				paths = collect_paths(context, path, parent_path)
+				found_path = resolve_to_path(context, paths)
+				return found_path
+			end
+			
+			
 			def collect_paths(context, path, parent_path)
-				# In regular sass `parent_path` is absolute,
-				# in sassc it may be relative, so make sure it is absolute.
-				parent_path = Pathname.new(parent_path)
-				if parent_path.relative?
-					# Append the Sprockets root_path.
-					parent_path = Pathname.new(context.root_path).join(parent_path)
-				end
-				
-				parent_dir = parent_path.dirname
 				specified_dir, specified_file = File.split(path)
 				specified_dir = Pathname.new(specified_dir)
 				
 				search_paths = [specified_dir.to_s]
 				
-				# Find parent_dir's root
-				env_root_paths = env_paths.map {|p| Pathname.new(p) }
-				root_path = env_root_paths.detect do |env_root_path|
-					# Return the root path that contains `parent_dir`
-					parent_dir.to_s.start_with?(env_root_path.to_s)
-				end
-				root_path ||= Pathname.new(context.root_path)
 				
-				if specified_dir.relative? && parent_dir != root_path
-					# Get any remaining path relative to root
-					relative_path = Pathname.new(parent_dir).relative_path_from(root_path)
-					search_paths.unshift(relative_path.join(specified_dir).to_s)
+				if !parent_path.nil?
+					# In sassc `parent_path` may be relative but we need it to be absolute.
+					# (In regular sass `parent_path` is always passed as absolute value)
+					parent_path = to_absolute(parent_path)
+					parent_dir = parent_path.dirname
+					
+					# Find parent_dir's root
+					env_root_paths = env_paths.map {|p| Pathname.new(p) }
+					root_path = env_root_paths.detect do |env_root_path|
+						# Return the root path that contains `parent_dir`
+						parent_dir.to_s.start_with?(env_root_path.to_s)
+					end
+					root_path ||= Pathname.new(context.root_path)
+					
+					
+					if specified_dir.relative? && parent_dir != root_path
+						# Get any remaining path relative to root
+						relative_path = Pathname.new(parent_dir).relative_path_from(root_path)
+						search_paths.unshift(relative_path.join(specified_dir).to_s)
+					end
 				end
 				
 				
@@ -163,31 +187,12 @@ module Sprockets
 							# Only join if search_path is not '.'
 							File.join(search_path, file_name)
 						end
-						
-						
 					}
 				}.flatten
 				
 				puts "paths=#{paths}"
 				
 				paths
-				
-				# parent_path = Pathname.new(parent_path)
-				# paths = [parent_path]
-				# 
-				# # Find base_path's root
-				# env_root_paths = env_paths.map { |p| Pathname.new(p) }
-				# root_path = env_root_paths.detect do |env_root_path|
-				# 	parent_path.to_s.start_with?(env_root_path.to_s)
-				# end
-				# 
-				# # Work out the relative path first.
-				# if parent_path.relative? && parent_path != root_path
-				# 	relative_path = parent_path.relative_path_from(root_path)
-				# 	paths.unshift(relative_path)
-				# end
-				# 
-				# paths.compact
 			end
 			
 			
@@ -266,35 +271,81 @@ module Sprockets
 				context.environment.paths
 			end
 
-			# # Resolve a single file in the Sprockets environment
-			# def import_file(path, parent_path)
-			# 	# Behaviour:
-			# 	# 
-			# 	# 
-			# 	# 
-			# end
-
-			# def glob_imports(base, glob, current_file)
-			# 	files = globbed_files(base, glob)
-			# 	files = files.reject { |f| f == current_file }
-			#
-			# 	files.map do |filename|
-			# 		record_import_as_dependency(filename)
-			# 		extension = extension_for_file(filename)
-			# 		extension.import_for(filename, base, options)
-			# 	end
-			# end
-			#
+			
+			
+			# Make `base` relative to `current_file`
+			# 
+			# raw glob is equivalent to `base + glob`
+			# 
+			# `base` absolute path to the left-hand side of the glob (absolute path is from `current_file`)
+			# `glob` right-hand side of glob (e.g. *)
+			# `current_file` is the absolute path to the currently running file
+			def glob_imports(base, glob, current_file)
+				# TODO: Make sure `current_file` is absolute
+				files = globbed_files(base, glob)
+				files = files.reject { |f| f == current_file }
+				
+				files.map do |filename|
+					record_import_as_dependency(filename)
+					EXTENSION.import_for(filename.to_s, base, options)
+				end
+			end
+			
+			# Resolve glob to a list of files
+			def globbed_files(base, glob)
+				# TODO: Raise an error from SassC here
+				raise ArgumentError unless glob == "*" || glob == "**/*"
+				
+				# Make sure `base` is absolute.
+				base_path = to_absolute(base)
+				path_with_glob = base_path.join(glob).to_s
+				
+				# Glob and resolve to files.
+				files = Pathname.glob(path_with_glob).sort.select do |path|
+					path != context.pathname && context.asset_requirable?(path)
+				end
+				
+				# extensions = EXTENSIONS.map(&:postfix)
+				# exts = extensions.map { |ext| Regexp.escape("#{ext}") }.join("|")
+				# sass_re = Regexp.compile("(#{exts})$")
+				# 
+				# record_import_as_dependency(base)
+				# 
+				# files = Dir["#{base}/#{glob}"].sort.map do |path|
+				# 	if File.directory?(path)
+				# 		record_import_as_dependency(path)
+				# 		nil
+				# 	elsif sass_re =~ path
+				# 		path
+				# 	end
+				# end
+				
+				files.compact
+			end
+			
+			
+			# Returns an absolute Pathname instance
+			def to_absolute(path)
+				abs_path = Pathname.new(path)
+				if abs_path.relative?
+					# prepend the Sprockets root_path.
+					abs_path = Pathname.new(context.root_path).join(path)
+				end
+			
+				return abs_path
+			end
+			
+			# # Resolve glob to a list of files
 			# def globbed_files(base, glob)
 			# 	# TODO: Raise an error from SassC here
 			# 	raise ArgumentError unless glob == "*" || glob == "**/*"
-			#
+			# 
 			# 	extensions = EXTENSIONS.map(&:postfix)
 			# 	exts = extensions.map { |ext| Regexp.escape("#{ext}") }.join("|")
 			# 	sass_re = Regexp.compile("(#{exts})$")
-			#
+			# 
 			# 	record_import_as_dependency(base)
-			#
+			# 
 			# 	files = Dir["#{base}/#{glob}"].sort.map do |path|
 			# 		if File.directory?(path)
 			# 			record_import_as_dependency(path)
@@ -303,7 +354,7 @@ module Sprockets
 			# 			path
 			# 		end
 			# 	end
-			#
+			# 
 			# 	files.compact
 			# end
 

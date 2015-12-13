@@ -64,10 +64,10 @@ module Sprockets
 				super unless self.class.superclass.engine_initialized?
 
 				if Sassc.add_sass_functions != false
-					begin
-						require 'sprockets/helpers'
+					# begin
+					# 	require 'sprockets/helpers'
 						require 'sprockets/sassc/functions'
-					rescue LoadError; end
+					# rescue LoadError; end
 				end
 
 				self.class.sass_functions_initialized = true
