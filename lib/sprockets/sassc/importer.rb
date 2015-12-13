@@ -113,28 +113,28 @@ module Sprockets
 				end
 				
 				# Resolve a single file
-				return import_file_original(path, parent_path)
+				return import_file(path, parent_path)
 			end
 			
 			
 			# Resolve single file (split out from original `#imports` method)
-			def import_file_original(path, parent_path)
+			def import_file(path, parent_path)
 				parent_dir, _ = File.split(parent_path)
 				
 				ctx = options[:sprockets][:context]
 				paths = collect_paths(ctx, path, parent_path)
 				
 				found_path = resolve_to_path(ctx, paths)
-				
 				puts "found_path=#{found_path}"
 				
-				record_import_as_dependency found_path
-				
-				## TODO: Change this so we're not creating a new importer 
-				## every time?
-				return EXTENSION.import_for(found_path.to_s, parent_dir, options)
+				if (found_path.nil?)
+					# Let sass handle the import
+					SassC::Importer::Import.new(path)
+				else
+					record_import_as_dependency found_path
+					return EXTENSION.import_for(found_path.to_s, parent_dir, options)
+				end
 
-				# SassC::Importer::Import.new(path)
 			end
 			
 			
