@@ -308,9 +308,11 @@ module Sprockets
 				path_with_glob = current_file.dirname.join(base, glob).to_s
 				
 				# Glob and resolve to files.
-				files = Pathname.glob(path_with_glob).sort.select do |path|
+				files = Pathname.glob(path_with_glob).sort.select { |path|
 					path != context.pathname && context.asset_requirable?(path)
-				end
+				}.map { |pathname|
+					pathname.to_s
+				}
 				
 				puts "globbed_files: files=#{files}"
 				
@@ -322,7 +324,8 @@ module Sprockets
 				# NOTE: Because of limitations in the data that we have
 				# and how Sprockets works, globs can only be relative to the current_file
 				# Trying to look up a linked glob will fail.
-				base_dir = Pathname.new(current_file).dirname.join(base)
+				# base_dir = Pathname.new(current_file).dirname.join(base)
+				base_dir = Pathname.new(current_file).dirname
 				
 				# Create a new filename used to represent this import.
 				temp_file_name = get_unique_filename(base, glob, current_file)
@@ -359,7 +362,7 @@ module Sprockets
 			# virtual files as it's own set of content.
 			def get_unique_filename(base, glob, prev)
 				# Replace backslash with underscore.
-				filename = File.join(base.gsub('/', '_'), glob)
+				filename = File.join(base, glob).gsub('/', '_')
 				
 				# Generate a unique name
 				@counter += 1
