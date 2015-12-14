@@ -10,7 +10,13 @@ module Sprockets
 				def initialize(postfix=nil)
 					@postfix = postfix
 				end
-
+				
+				def import_for(full_path, parent_dir, options)
+					SassC::Importer::Import.new(full_path)
+				end
+			end
+			
+			class SprocketsExtension < Extension
 				def import_for(full_path, parent_dir, options)
 					eval_content = evaluate(options[:sprockets][:context], full_path)
 					
@@ -19,6 +25,8 @@ module Sprockets
 					if Pathname.new(full_path).basename.to_s.include?('.sass')
 						eval_content = SassC::Sass2Scss.convert(eval_content)
 					end
+					
+					puts "SprocketsExtension: eval_content=#{eval_content}"
 					
 					SassC::Importer::Import.new(full_path, source: eval_content)
 				end
@@ -34,6 +42,16 @@ module Sprockets
 					context.evaluate(path, :processors => processors)
 				end
 			end
+			
+			
+			class VirtualFile < Extension
+				def import_for(full_path, content)
+					puts "VirtualFile: full_path=#{full_path}, content=#{content}"
+					
+					SassC::Importer::Import.new(full_path, source: content)
+				end
+			end
+			
 			
 			class CSSExtension < Extension
 				def postfix
@@ -91,6 +109,14 @@ module Sprockets
 			
 			# We only have one type of extension now, so only initialise it once.
 			EXTENSION = Extension.new()
+			SPROCKETS_EXTENSION = SprocketsExtension.new()
+			VIRTUAL_FILE = VirtualFile.new()
+			
+			
+			def initialize(options)
+				super(options)
+				@counter = 0
+			end
 			
 
 			def imports(path, parent_path)
@@ -98,18 +124,17 @@ module Sprockets
 				puts "\nimporter: \npath='#{path}'\nparent_path='#{parent_path}'\n"
 				
 				# Resolve a glob
-				if m = path.match(GLOB)
+				if (m = path.match(GLOB))
 					
 					abs_parent = Pathname.new(parent_path)
-					if (abs_parent.relative?)
+					if abs_parent.relative?
 						# Resolve relative `parent_path` to absolute with sprockets.
 						abs_parent = collect_and_resolve(options[:sprockets][:context], parent_path, nil)
 					end
 					
 					path = path.sub(m[0], "")
 					base = File.join(abs_parent.dirname, path)
-					# base = File.expand_path(path, File.dirname(parent_path))
-					return glob_imports(base, m[2], abs_parent)
+					return glob_imports(path, m[2], abs_parent)
 				end
 				
 				# Resolve a single file
@@ -127,12 +152,12 @@ module Sprockets
 				found_path = resolve_to_path(ctx, paths)
 				puts "found_path=#{found_path}"
 				
-				if (found_path.nil?)
+				if found_path.nil?
 					# Let sass handle the import
 					SassC::Importer::Import.new(path)
 				else
 					record_import_as_dependency found_path
-					return EXTENSION.import_for(found_path.to_s, parent_dir, options)
+					return SPROCKETS_EXTENSION.import_for(found_path.to_s, parent_dir, options)
 				end
 
 			end
@@ -210,42 +235,6 @@ module Sprockets
 				nil
 			end
 			
-
-			# def imports(path, parent_path)
-			# 	parent_dir, _ = File.split(parent_path)
-			# 	specified_dir, specified_file = File.split(path)
-			#
-			# 	if m = path.match(GLOB)
-			# 		path = path.sub(m[0], "")
-			# 		base = File.expand_path(path, File.dirname(parent_path))
-			# 		return glob_imports(base, m[2], parent_path)
-			# 	end
-			#
-			# 	search_paths = ([parent_dir] + load_paths).uniq
-			#
-			# 	if specified_dir != "."
-			# 		search_paths.map! do |path|
-			# 			File.join(path, specified_dir)
-			# 		end
-			# 	end
-			#
-			# 	search_paths.each do |search_path|
-			# 		PREFIXS.each do |prefix|
-			# 			file_name = prefix + specified_file
-			#
-			# 			EXTENSIONS.each do |extension|
-			# 				try_path = File.join(search_path, file_name + extension.postfix)
-			# 				if File.exists?(try_path)
-			# 					record_import_as_dependency try_path
-			# 					return extension.import_for(try_path, parent_dir, options)
-			# 				end
-			# 			end
-			# 		end
-			# 	end
-			#
-			# 	SassC::Importer::Import.new(path)
-			# end
-
 			private
 
 			def extension_for_file(file)
@@ -281,46 +270,104 @@ module Sprockets
 			# `glob` right-hand side of glob (e.g. *)
 			# `current_file` is the absolute path to the currently running file
 			def glob_imports(base, glob, current_file)
+				
+				# Make glob relative to `current_file`
+				
+				
 				# TODO: Make sure `current_file` is absolute
-				files = globbed_files(base, glob)
+				files = globbed_files(base, glob, current_file)
 				files = files.reject { |f| f == current_file }
 				
-				files.map do |filename|
-					record_import_as_dependency(filename)
-					EXTENSION.import_for(filename.to_s, base, options)
-				end
+				# imports = files.map do |filename|
+				# 	
+				# 	puts "import: #{filename.to_s}"
+				# 	
+				# 	record_import_as_dependency(filename)
+				# 	SPROCKETS_EXTENSION.import_for(filename.to_s, base, options)
+				# 	# EXTENSION.import_for(filename.to_s, base, options)
+				# end
+				
+				imports = make_import(files, base, glob, current_file)
+				
+				puts "imports= #{imports}"
+				return imports
 			end
 			
 			# Resolve glob to a list of files
-			def globbed_files(base, glob)
+			# 
+			# base is relative to current_file
+			# glob is relative to base
+			# current_file is absolute
+			def globbed_files(base, glob, current_file)
 				# TODO: Raise an error from SassC here
 				raise ArgumentError unless glob == "*" || glob == "**/*"
 				
 				# Make sure `base` is absolute.
-				base_path = to_absolute(base)
-				path_with_glob = base_path.join(glob).to_s
+				# base should be relative to the current file?
+				# Or relative to the root of the application.
+				path_with_glob = current_file.dirname.join(base, glob).to_s
 				
 				# Glob and resolve to files.
 				files = Pathname.glob(path_with_glob).sort.select do |path|
 					path != context.pathname && context.asset_requirable?(path)
 				end
 				
-				# extensions = EXTENSIONS.map(&:postfix)
-				# exts = extensions.map { |ext| Regexp.escape("#{ext}") }.join("|")
-				# sass_re = Regexp.compile("(#{exts})$")
-				# 
-				# record_import_as_dependency(base)
-				# 
-				# files = Dir["#{base}/#{glob}"].sort.map do |path|
-				# 	if File.directory?(path)
-				# 		record_import_as_dependency(path)
-				# 		nil
-				# 	elsif sass_re =~ path
-				# 		path
-				# 	end
-				# end
+				puts "globbed_files: files=#{files}"
 				
 				files.compact
+			end
+			
+			
+			def make_import(files, base, glob, current_file)
+				# NOTE: Because of limitations in the data that we have
+				# and how Sprockets works, globs can only be relative to the current_file
+				# Trying to look up a linked glob will fail.
+				base_dir = Pathname.new(current_file).dirname.join(base)
+				
+				# Create a new filename used to represent this import.
+				temp_file_name = get_unique_filename(base, glob, current_file)
+				
+				# Return a virtual file that imports the files from the resolved glob.
+				import_list = []
+				files.each do |filename|
+					relative_path = Pathname.new(filename).relative_path_from(base_dir)
+					puts "make_import: relative_path=#{relative_path.to_s}"
+					# puts "make_import: #{filename.to_s}"
+					
+					import_list << "@import \"#{relative_path}\";\n"
+					
+					# record_import_as_dependency(filename)
+					# SPROCKETS_EXTENSION.import_for(filename.to_s, base, options)
+					# EXTENSION.import_for(filename.to_s, base, options)
+				end
+				
+				# Return a virtual file that will import the individual files.
+				import_content = import_list.join('')
+				puts "import_content=#{import_content}"
+				
+				
+				import = VIRTUAL_FILE.import_for(temp_file_name, import_content)
+				return import
+			end
+			
+			
+			# Create a unique filename that represents
+			# a glob "file" (i.e. contains all of the 
+			# resolved files for that glob).
+			# 
+			# This lets libsass treat each of these 
+			# virtual files as it's own set of content.
+			def get_unique_filename(base, glob, prev)
+				# Replace backslash with underscore.
+				filename = File.join(base.gsub('/', '_'), glob)
+				
+				# Generate a unique name
+				@counter += 1
+				filename = "[#{@counter}][#{filename}]"
+				
+				# Put a plus before the glob so we can find it
+				file = "#{prev}+#{filename}"
+				return file
 			end
 			
 			
@@ -334,6 +381,7 @@ module Sprockets
 			
 				return abs_path
 			end
+			
 			
 			# # Resolve glob to a list of files
 			# def globbed_files(base, glob)

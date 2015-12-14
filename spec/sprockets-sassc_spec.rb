@@ -15,42 +15,42 @@ describe Sprockets::Sassc do
     @root.destroy!
   end
 
-  it 'processes scss files normally' do
+  it 'processes scss files normally', :focus => false do
     @assets.file 'main.css.scss', '//= require dep'
     @assets.file 'dep.css.scss', 'body { color: blue; }'
     asset = @env['main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'processes sass files normally' do
+  it 'processes sass files normally', :focus => false do
     @assets.file 'main.css.sass', '//= require dep'
     @assets.file 'dep.css.sass', "body\n  color: blue"
     asset = @env['main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports standard files' do
+  it 'imports standard files', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file 'dep.css.scss', '$color: blue;'
     asset = @env['main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports partials' do
+  it 'imports partials', :focus => false do
     @assets.file 'main.css.scss', %(@import "_dep";\nbody { color: $color; })
     @assets.file '_dep.css.scss', '$color: blue;'
     asset = @env['main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports other syntax' do
+  it 'imports other syntax', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file 'dep.sass', "$color: blue\nhtml\n  height: 100%"
     asset = @env['main.css']
     expect(asset.to_s).to eql("html {\n  height: 100%; }\n\nbody {\n  color: blue; }\n")
   end
 
-  it 'imports files with the correct content type' do
+  it 'imports files with the correct content type', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file 'dep.js', 'var app = {};'
     @assets.file '_dep.css.scss', '$color: blue;'
@@ -58,7 +58,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports files with directives', :focus => true do
+  it 'imports files with directives', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";)
     @assets.file 'dep.css', "/*\n *= require subdep\n */"
     @assets.file 'subdep.css.scss', "$color: blue;\nbody { color: $color; }"
@@ -66,14 +66,14 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to include("body {\n  color: blue; }\n")
   end
 
-  it 'imports files with additional processors' do
+  it 'imports files with additional processors', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file 'dep.css.scss.erb', "$color: <%= 'blue' %>;"
     asset = @env['main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports relative files' do
+  it 'imports relative files', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "./dep-1";\n@import "./subfolder/dep-2";\nbody { background-color: $background-color; color: $color; })
     @assets.file 'folder/dep-1.css.scss', '$background-color: red;'
     @assets.file 'folder/subfolder/dep-2.css.scss', '$color: blue;'
@@ -81,7 +81,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  background-color: red;\n  color: blue; }\n")
   end
 
-  it 'imports relative partials' do
+  it 'imports relative partials', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "./dep-1";\n@import "./subfolder/dep-2";\nbody { background-color: $background-color; color: $color; })
     @assets.file 'folder/_dep-1.css.scss', '$background-color: red;'
     @assets.file 'folder/subfolder/_dep-2.css.scss', '$color: blue;'
@@ -89,7 +89,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  background-color: red;\n  color: blue; }\n")
   end
 
-  it 'imports deeply nested relative partials' do
+  it 'imports deeply nested relative partials', :focus => false do
     @assets.file 'package-prime/stylesheets/main.scss', %(@import "package-dep/src/stylesheets/variables";\nbody { background-color: $background-color; color: $color; })
     @assets.file 'package-dep/src/stylesheets/_variables.scss', %(@import "./colors";\n$background-color: red;)
     @assets.file 'package-dep/src/stylesheets/_colors.scss', '$color: blue;'
@@ -97,7 +97,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  background-color: red;\n  color: blue; }\n")
   end
 
-  it 'imports relative files without preceding ./' do
+  it 'imports relative files without preceding ./', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "dep-1";\n@import "subfolder/dep-2";\nbody { background-color: $background-color; color: $color; })
     @assets.file 'folder/dep-1.css.scss', '$background-color: red;'
     @assets.file 'folder/subfolder/dep-2.css.scss', '$color: blue;'
@@ -105,7 +105,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  background-color: red;\n  color: blue; }\n")
   end
 
-  it 'imports relative partials without preceding ./' do
+  it 'imports relative partials without preceding ./', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "dep-1";\n@import "subfolder/dep-2";\nbody { background-color: $background-color; color: $color; })
     @assets.file 'folder/_dep-1.css.scss', '$background-color: red;'
     @assets.file 'folder/subfolder/_dep-2.css.scss', '$color: blue;'
@@ -113,21 +113,21 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  background-color: red;\n  color: blue; }\n")
   end
 
-  it 'imports files relative to root' do
+  it 'imports files relative to root', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file 'dep.css.scss', '$color: blue;'
     asset = @env['folder/main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports partials relative to root' do
+  it 'imports partials relative to root', :focus => false do
     @assets.file 'folder/main.css.scss', %(@import "dep";\nbody { color: $color; })
     @assets.file '_dep.css.scss', '$color: blue;'
     asset = @env['folder/main.css']
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'shares Sass environment with other imports' do
+  it 'shares Sass environment with other imports', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep-1";\n@import "dep-2";)
     @assets.file '_dep-1.scss', '$color: blue;'
     @assets.file '_dep-2.scss', 'body { color: $color; }'
@@ -135,7 +135,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports files from the assets load path' do
+  it 'imports files from the assets load path', :focus => false do
     vendor = @root.directory 'vendor'
     @env.append_path vendor.to_s
 
@@ -145,7 +145,8 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports nested partials with relative path from the assets load path' do
+  it 'imports nested partials with relative path from the assets load path', :focus => false do
+      # TODO: Inspect the environment load path for this test case - curious to know what values we'll have.
     vendor = @root.directory 'vendor'
     @env.append_path vendor.to_s
 
@@ -157,7 +158,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports nested partials with relative path and glob from the assets load path' do
+  it 'imports nested partials with relative path and glob from the assets load path', :focus => false do 
     vendor = @root.directory 'vendor'
     @env.append_path vendor.to_s
 
@@ -169,7 +170,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'allows global Sass configuration' do
+  it 'allows global Sass configuration', :focus => false do
     Sprockets::Sassc.options[:style] = :compact
     @assets.file 'main.css.scss', "body {\n  color: blue;\n}"
 
@@ -178,7 +179,7 @@ describe Sprockets::Sassc do
     Sprockets::Sassc.options.delete(:style)
   end
 
-  it 'imports files from the Sass load path' do
+  it 'imports files from the Sass load path', :focus => false do
     vendor = @root.directory 'vendor'
     Sprockets::Sassc.options[:load_paths] = [ vendor.to_s ]
 
@@ -189,14 +190,15 @@ describe Sprockets::Sassc do
     Sprockets::Sassc.options.delete(:load_paths)
   end
 
-  it 'works with the Compass framework' do
-    @assets.file 'main.css.scss', %(@import "compass/css3";\nbutton { @include border-radius(5px); })
+  # it 'works with the Compass framework' do
+  #   @assets.file 'main.css.scss', %(@import "compass/css3";\nbutton { @include border-radius(5px); })
+  # 
+  #   asset = @env['main.css']
+  #   expect(asset.to_s).to include('border-radius: 5px;')
+  # end
 
-    asset = @env['main.css']
-    expect(asset.to_s).to include('border-radius: 5px;')
-  end
-
-  it 'imports globbed files' do
+  it 'imports globbed files', :focus => false do
+    ## FIXME
     @assets.file 'main.css.scss', %(@import "folder/*";\nbody { color: $color; background: $bg-color; })
     @assets.file 'folder/dep-1.css.scss', '$color: blue;'
     @assets.file 'folder/dep-2.css.scss', '$bg-color: red;'
@@ -204,7 +206,15 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue;\n  background: red; }\n")
   end
 
-  it 'adds dependencies when imported' do
+  it 'processes globbed scss.erb files', :focus => false do
+    @assets.file 'main.css.scss', %(@import "folder/*";\nbody { color: $color; background: $bg-color; })
+    @assets.file 'folder/dep-1.css.scss.erb', "$color: <%= 'blue' %>;"
+    @assets.file 'folder/dep-2.css.scss', '$bg-color: red;'
+    asset = @env['main.css']
+    expect(asset.to_s).to eql("body {\n  color: blue;\n  background: red; }\n")
+  end
+
+  it 'adds dependencies when imported', :focus => true do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     dep = @assets.file 'dep.css.scss', '$color: blue;'
 
@@ -218,7 +228,7 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it 'adds dependencies from assets when imported' do
+  it 'adds dependencies from assets when imported', :focus => true do
     @assets.file 'main.css.scss', %(@import "dep-1";\nbody { color: $color; })
     @assets.file 'dep-1.css.scss', %(@import "dep-2";\n)
     dep = @assets.file 'dep-2.css.scss', '$color: blue;'
@@ -233,7 +243,8 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it 'adds dependencies when imported from a glob' do
+  it 'adds dependencies when imported from a glob', :focus => true do
+    # FIXME
     @assets.file 'main.css.scss', %(@import "folder/*";\nbody { color: $color; background: $bg-color; })
     @assets.file 'folder/_dep-1.scss', '$color: blue;'
     dep = @assets.file 'folder/_dep-2.scss', '$bg-color: red;'
@@ -248,7 +259,7 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it "uses the environment's cache" do
+  it "uses the environment's cache", :focus => true do
     cache = {}
     @env.cache = cache
 
@@ -263,7 +274,8 @@ describe Sprockets::Sassc do
     expect(sass_cache).to_not be_nil
   end
 
-  it 'adds the #asset_path helper' do
+  it 'adds the #asset_path helper', :focus => false do
+    # FIXME
     @assets.file 'asset_path.css.scss', %(body { background: url(asset-path("image.jpg")); })
     @assets.file 'asset_url.css.scss', %(body { background: asset-url("image.jpg"); })
     @assets.file 'asset_path_options.css.scss', %(body { background: url(asset-path("image.jpg", $digest: true, $prefix: "/themes")); })
@@ -276,7 +288,8 @@ describe Sprockets::Sassc do
     expect(@env['asset_url_options.css'].to_s).to match(%r(body \{\n  background: url\("/themes/image-[0-9a-f]+.jpg"\); \}\n))
   end
 
-  it 'adds the #image_path helper' do
+  it 'adds the #image_path helper', :focus => false do
+    # FIXME
     @assets.file 'image_path.css.scss', %(body { background: url(image-path("image.jpg")); })
     @assets.file 'image_url.css.scss', %(body { background: image-url("image.jpg"); })
     @assets.file 'image_path_options.css.scss', %(body { background: url(image-path("image.jpg", $digest: true, $prefix: "/themes")); })
@@ -289,7 +302,8 @@ describe Sprockets::Sassc do
     expect(@env['image_url_options.css'].to_s).to match(%r(body \{\n  background: url\("/themes/image-[0-9a-f]+.jpg"\); \}\n))
   end
 
-  it 'adds the #font_path helper' do
+  it 'adds the #font_path helper', :focus => false do
+    # FIXME
     @assets.file 'font_path.css.scss', %(@font-face { src: url(font-path("font.ttf")); })
     @assets.file 'font_url.css.scss', %(@font-face { src: font-url("font.ttf"); })
     @assets.file 'font_path_options.css.scss', %(@font-face { src: url(font-path("font.ttf", $digest: true, $prefix: "/themes")); })
@@ -302,14 +316,16 @@ describe Sprockets::Sassc do
     expect(@env['font_url_options.css'].to_s).to match(%r(@font-face \{\n  src: url\("/themes/font-[0-9a-f]+.ttf"\); \}\n))
   end
 
-  it 'adds the #asset_data_uri helper' do
+  it 'adds the #asset_data_uri helper', :focus => false do
+    # FIXME
     @assets.file 'asset_data_uri.css.scss', %(body { background: asset-data-uri("image.jpg"); })
     @assets.file 'image.jpg', File.read('spec/fixtures/image.jpg')
 
     expect(@env['asset_data_uri.css'].to_s).to include("body {\n  background: url(data:image/jpeg;base64,")
   end
 
-  it "mirrors Compass's #image_url helper" do
+  it "mirrors Compass's #image_url helper", :focus => false do
+    # FIXME
     @assets.file 'image_path.css.scss', %(body { background: url(image-url("image.jpg", true)); })
     @assets.file 'image_url.css.scss', %(body { background: image-url("image.jpg", false); })
     @assets.file 'cache_buster.css.scss', %(body { background: image-url("image.jpg", false, true); })
@@ -320,7 +336,8 @@ describe Sprockets::Sassc do
     expect(@env['cache_buster.css'].to_s).to eql(%(body {\n  background: url("/assets/image.jpg"); }\n))
   end
 
-  it "mirrors Compass's #font_url helper" do
+  it "mirrors Compass's #font_url helper", :focus => false do
+    # FIXME
     @assets.file 'font_path.css.scss', %(@font-face { src: url(font-url("font.ttf", true)); })
     @assets.file 'font_url.css.scss', %(@font-face { src: font-url("font.ttf", false); })
     @assets.file 'font.ttf'
@@ -329,7 +346,8 @@ describe Sprockets::Sassc do
     expect(@env['font_url.css'].to_s).to eql(%(@font-face {\n  src: url("/assets/font.ttf"); }\n))
   end
 
-  it "mirrors Sass::Rails's #asset_path helpers" do
+  it "mirrors Sass::Rails's #asset_path helpers", :focus => false do
+    # FIXME
     @assets.file 'asset_path.css.scss', %(body { background: url(asset-path("image.jpg", image)); })
     @assets.file 'asset_url.css.scss', %(body { background: asset-url("icon.jpg", image); })
     @assets.file 'image.jpg'
@@ -338,14 +356,14 @@ describe Sprockets::Sassc do
     expect(@env['asset_url.css'].to_s).to eql(%(body {\n  background: url("/images/icon.jpg"); }\n))
   end
 
-  it 'allows asset helpers from within Compass mixins' do
-    @assets.file 'bullets.css.scss', %(@import "compass";\nul { @include pretty-bullets('bullet.gif', 10px, 10px); })
-    @assets.file 'bullet.gif'
+  # it 'allows asset helpers from within Compass mixins', :focus => true do
+  #   @assets.file 'bullets.css.scss', %(@import "compass";\nul { @include pretty-bullets('bullet.gif', 10px, 10px); })
+  #   @assets.file 'bullet.gif'
+  # 
+  #   expect(@env['bullets.css'].to_s).to match(%r[background: url\("/assets/bullet\.gif"\)])
+  # end
 
-    expect(@env['bullets.css'].to_s).to match(%r[background: url\("/assets/bullet\.gif"\)])
-  end
-
-  it 'compresses css' do
+  it 'compresses css', :focus => false do
     css = "div {\n  color: red;\n}\n"
     compressed_css = Sprockets::Sassc::Compressor.new.compress(css)
     expect(compressed_css).to eql("div{color:red}\n")
