@@ -1,6 +1,8 @@
 require 'tilt'
 require 'pathname'
 
+require_relative 'default_importer'
+
 module Sprockets
 	module Sassc
 		class Importer < ::SassC::Importer
@@ -116,6 +118,7 @@ module Sprockets
 			def initialize(options)
 				super(options)
 				@counter = 0
+				@default_importer = ::SassC::Rails::Importer.new(options)
 			end
 			
 
@@ -153,8 +156,13 @@ module Sprockets
 				puts "found_path=#{found_path}"
 				
 				if found_path.nil?
+					
+					# Defer to the original behaviour
+					# e.g. search through the load paths.
+					@default_importer.imports(path, parent_path)
+					
 					# Let sass handle the import
-					SassC::Importer::Import.new(path)
+					# SassC::Importer::Import.new(path)
 				else
 					record_import_as_dependency found_path
 					return SPROCKETS_EXTENSION.import_for(found_path.to_s, parent_dir, options)

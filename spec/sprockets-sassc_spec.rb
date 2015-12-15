@@ -158,7 +158,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
-  it 'imports nested partials with relative path and glob from the assets load path', :focus => false do 
+  it 'imports nested partials with relative path and glob from the assets load path', :focus => false do
     vendor = @root.directory 'vendor'
     @env.append_path vendor.to_s
 
@@ -170,6 +170,19 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
   end
 
+  it 'imports nested partials with relative paths from the Sass load path (requires SassC absolute parent_path)', :focus => false do
+    # This test requires the absolute parent_path to be passed from sassc
+    # https://github.com/sass/sassc-ruby/pull/28
+    @assets.file 'main.css.scss', %(@import "user1/_all-vars";\nbody { color: $color; })
+    @assets.file 'user1/_all-vars.scss', '@import "vars/*";'
+    @assets.file 'user1/vars/_user-vars.scss', '$color: blue;'
+    @assets.file 'user2/vars/_user-vars.scss', '$color: red;'
+  
+    asset = @env['main.css']
+    expect(asset.to_s).to eql("body {\n  color: blue; }\n")
+    Sprockets::Sassc.options.delete(:load_paths)
+  end
+  
   it 'allows global Sass configuration', :focus => false do
     Sprockets::Sassc.options[:style] = :compact
     @assets.file 'main.css.scss', "body {\n  color: blue;\n}"
@@ -198,7 +211,6 @@ describe Sprockets::Sassc do
   # end
 
   it 'imports globbed files', :focus => false do
-    ## FIXME
     @assets.file 'main.css.scss', %(@import "folder/*";\nbody { color: $color; background: $bg-color; })
     @assets.file 'folder/dep-1.css.scss', '$color: blue;'
     @assets.file 'folder/dep-2.css.scss', '$bg-color: red;'
@@ -214,7 +226,7 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue;\n  background: red; }\n")
   end
 
-  it 'adds dependencies when imported', :focus => true do
+  it 'adds dependencies when imported', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep";\nbody { color: $color; })
     dep = @assets.file 'dep.css.scss', '$color: blue;'
 
@@ -228,7 +240,7 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it 'adds dependencies from assets when imported', :focus => true do
+  it 'adds dependencies from assets when imported', :focus => false do
     @assets.file 'main.css.scss', %(@import "dep-1";\nbody { color: $color; })
     @assets.file 'dep-1.css.scss', %(@import "dep-2";\n)
     dep = @assets.file 'dep-2.css.scss', '$color: blue;'
@@ -243,8 +255,7 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it 'adds dependencies when imported from a glob', :focus => true do
-    # FIXME
+  it 'adds dependencies when imported from a glob', :focus => false do
     @assets.file 'main.css.scss', %(@import "folder/*";\nbody { color: $color; background: $bg-color; })
     @assets.file 'folder/_dep-1.scss', '$color: blue;'
     dep = @assets.file 'folder/_dep-2.scss', '$bg-color: red;'
@@ -259,7 +270,7 @@ describe Sprockets::Sassc do
     expect(asset).to_not be_fresh(@env)
   end
 
-  it "uses the environment's cache", :focus => true do
+  it "uses the environment's cache", :focus => false do
     cache = {}
     @env.cache = cache
 
@@ -386,6 +397,7 @@ describe Sprockets::Sassc do
       end
 
       it 'does not add Sass functions if sprockets-helpers is not available' do
+          # FIXME
         template = Sprockets::Sassc::SassTemplate.new {}
         template.should_receive(:require).with('sprockets/helpers').and_raise LoadError
         template.should_not_receive(:require).with 'sprockets/sass/functions'
