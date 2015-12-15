@@ -3,6 +3,9 @@ require 'pathname'
 
 require_relative 'default_importer'
 
+# # DEBUG ONLY
+# require 'colorize'
+
 module Sprockets
 	module Sassc
 		class Importer < ::SassC::Importer
@@ -27,8 +30,7 @@ module Sprockets
 					if Pathname.new(full_path).basename.to_s.include?('.sass')
 						eval_content = SassC::Sass2Scss.convert(eval_content)
 					end
-					
-					puts "SprocketsExtension: eval_content=#{eval_content}"
+					# puts "SprocketsExtension: eval_content=#{eval_content}"
 					
 					SassC::Importer::Import.new(full_path, source: eval_content)
 				end
@@ -48,69 +50,16 @@ module Sprockets
 			
 			class VirtualFile < Extension
 				def import_for(full_path, content)
-					puts "VirtualFile: full_path=#{full_path}, content=#{content}"
-					
+					# puts "VirtualFile: full_path=#{full_path}"
 					SassC::Importer::Import.new(full_path, source: content)
 				end
 			end
 			
 			
-			class CSSExtension < Extension
-				def postfix
-					".css"
-				end
-				
-				# def import_for(full_path, parent_dir, options)
-				# 	import_path = full_path.gsub(/\.css$/,"")
-				# 	SassC::Importer::Import.new(import_path)
-				# end
-			end
-			
-			class CssScssExtension < Extension
-				def postfix
-					".css.scss"
-				end
-			end
-			
-			class CssSassExtension < Extension
-				def postfix
-					".css.sass"
-				end
-				
-				def import_for(full_path, parent_dir, options)
-					sass = evaluate(options[:sprockets][:context], full_path)
-					parsed_scss = SassC::Sass2Scss.convert(sass)
-					SassC::Importer::Import.new(full_path, source: parsed_scss)
-				end
-			end
-			
-			class SassERBExtension < Extension
-				def postfix
-					".sass.erb"
-				end
-			end
-			
-			class ERBExtension < Extension
-				
-			end
-			
-			
-			EXTENSIONS = [
-				CssScssExtension.new,
-				CssSassExtension.new,
-				Extension.new(".scss"),
-				Extension.new(".sass"),
-				CSSExtension.new,
-				ERBExtension.new(".scss.erb"),
-				ERBExtension.new(".css.erb"),
-				SassERBExtension.new
-			]
-
 			PREFIXS = [ "", "_" ]
 			GLOB = /(\A|\/)(\*|\*\*\/\*)\z/
 			
-			# We only have one type of extension now, so only initialise it once.
-			EXTENSION = Extension.new()
+			# Initialise our extension handlers.
 			SPROCKETS_EXTENSION = SprocketsExtension.new()
 			VIRTUAL_FILE = VirtualFile.new()
 			
@@ -124,7 +73,7 @@ module Sprockets
 
 			def imports(path, parent_path)
 				
-				puts "\nimporter: \npath='#{path}'\nparent_path='#{parent_path}'\n"
+				# puts "\nimporter: \n    path=        '#{path}'\n    parent_path= '#{parent_path}'\n"
 				
 				# Resolve a glob
 				if (m = path.match(GLOB))
@@ -141,7 +90,11 @@ module Sprockets
 				end
 				
 				# Resolve a single file
-				return import_file(path, parent_path)
+				imports = import_file(path, parent_path)
+				
+				# puts "found_path= #{imports.path}".green
+				
+				imports
 			end
 			
 			
@@ -153,16 +106,10 @@ module Sprockets
 				paths = collect_paths(ctx, path, parent_path)
 				
 				found_path = resolve_to_path(ctx, paths)
-				puts "found_path=#{found_path}"
-				
 				if found_path.nil?
-					
-					# Defer to the original behaviour
+					# Defer to the original sassc-rails import behaviour
 					# e.g. search through the load paths.
 					@default_importer.imports(path, parent_path)
-					
-					# Let sass handle the import
-					# SassC::Importer::Import.new(path)
 				else
 					record_import_as_dependency found_path
 					return SPROCKETS_EXTENSION.import_for(found_path.to_s, parent_dir, options)
@@ -223,7 +170,7 @@ module Sprockets
 					}
 				}.flatten
 				
-				puts "paths=#{paths}"
+				# puts "paths=#{paths}"
 				
 				paths
 			end
@@ -245,12 +192,6 @@ module Sprockets
 			
 			private
 
-			def extension_for_file(file)
-				EXTENSIONS.detect do |extension|
-					file.include? extension.postfix
-				end
-			end
-
 			def record_import_as_dependency(path)
 				context.depend_on path
 			end
@@ -267,8 +208,6 @@ module Sprockets
 			def env_paths
 				context.environment.paths
 			end
-
-			
 			
 			# Make `base` relative to `current_file`
 			# 
@@ -278,26 +217,12 @@ module Sprockets
 			# `glob` right-hand side of glob (e.g. *)
 			# `current_file` is the absolute path to the currently running file
 			def glob_imports(base, glob, current_file)
-				
-				# Make glob relative to `current_file`
-				
-				
-				# TODO: Make sure `current_file` is absolute
+				# Resolve the glob relative to `current_file`
 				files = globbed_files(base, glob, current_file)
 				files = files.reject { |f| f == current_file }
 				
-				# imports = files.map do |filename|
-				# 	
-				# 	puts "import: #{filename.to_s}"
-				# 	
-				# 	record_import_as_dependency(filename)
-				# 	SPROCKETS_EXTENSION.import_for(filename.to_s, base, options)
-				# 	# EXTENSION.import_for(filename.to_s, base, options)
-				# end
-				
 				imports = make_import(files, base, glob, current_file)
-				
-				puts "imports= #{imports}"
+				# puts "imports= #{imports}"
 				return imports
 			end
 			
@@ -322,8 +247,6 @@ module Sprockets
 					pathname.to_s
 				}
 				
-				puts "globbed_files: files=#{files}"
-				
 				files.compact
 			end
 			
@@ -342,20 +265,14 @@ module Sprockets
 				import_list = []
 				files.each do |filename|
 					relative_path = Pathname.new(filename).relative_path_from(base_dir)
-					puts "make_import: relative_path=#{relative_path.to_s}"
-					# puts "make_import: #{filename.to_s}"
+					# puts "make_import: relative_path=#{relative_path.to_s}"
 					
 					import_list << "@import \"#{relative_path}\";\n"
-					
-					# record_import_as_dependency(filename)
-					# SPROCKETS_EXTENSION.import_for(filename.to_s, base, options)
-					# EXTENSION.import_for(filename.to_s, base, options)
 				end
 				
 				# Return a virtual file that will import the individual files.
 				import_content = import_list.join('')
-				puts "import_content=#{import_content}"
-				
+				# puts "import_content=#{import_content}"
 				
 				import = VIRTUAL_FILE.import_for(temp_file_name, import_content)
 				return import
@@ -369,8 +286,8 @@ module Sprockets
 			# This lets libsass treat each of these 
 			# virtual files as it's own set of content.
 			def get_unique_filename(base, glob, prev)
-				# Replace backslash with underscore.
-				filename = File.join(base, glob).gsub('/', '_')
+				# Replace backslash with arrow.
+				filename = File.join(base, glob).gsub('/', '>')
 				
 				# Generate a unique name
 				@counter += 1
@@ -392,30 +309,6 @@ module Sprockets
 			
 				return abs_path
 			end
-			
-			
-			# # Resolve glob to a list of files
-			# def globbed_files(base, glob)
-			# 	# TODO: Raise an error from SassC here
-			# 	raise ArgumentError unless glob == "*" || glob == "**/*"
-			# 
-			# 	extensions = EXTENSIONS.map(&:postfix)
-			# 	exts = extensions.map { |ext| Regexp.escape("#{ext}") }.join("|")
-			# 	sass_re = Regexp.compile("(#{exts})$")
-			# 
-			# 	record_import_as_dependency(base)
-			# 
-			# 	files = Dir["#{base}/#{glob}"].sort.map do |path|
-			# 		if File.directory?(path)
-			# 			record_import_as_dependency(path)
-			# 			nil
-			# 		elsif sass_re =~ path
-			# 			path
-			# 		end
-			# 	end
-			# 
-			# 	files.compact
-			# end
 
 		end
 	end

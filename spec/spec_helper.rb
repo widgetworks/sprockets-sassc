@@ -19,6 +19,7 @@ RSpec.configure do |config|
     # http://stackoverflow.com/questions/6116668/rspec-how-to-run-a-single-test
     # https://www.relishapp.com/rspec/rspec-core/v/2-6/docs/filtering/inclusion-filters
     config.filter_run :focus => true
+    # config.filter_run :focus => false
     config.run_all_when_everything_filtered = true
 
     config.include TestConstruct::Helpers
