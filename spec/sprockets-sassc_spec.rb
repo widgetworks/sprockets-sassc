@@ -182,6 +182,39 @@ describe Sprockets::Sassc do
     expect(asset.to_s).to eql("body {\n  color: blue; }\n")
     Sprockets::Sassc.options.delete(:load_paths)
   end
+
+
+  it 'same import from different parent returns different content', :focus => false do
+    # I think there is an issue in libsass/sassc that causes it to return
+    # the same information for the same glob regardless of whether different
+    # results are returned (e.g. for different parent directories).
+    @assets.file 'main.css.scss', %(@import "user1/_all-vars";\n@import "user2/_all-vars";\n.user1 { color: $color1; }\n.user2 { color: $color2; })
+    @assets.file 'user1/_all-vars.scss', '@import "vars/user-vars";'
+    @assets.file 'user1/vars/_user-vars.scss', '$color1: blue;'
+  
+    @assets.file 'user2/_all-vars.scss', '@import "vars/user-vars";'
+    @assets.file 'user2/vars/_user-vars.scss', '$color2: red;'
+  
+    asset = @env['main.css']
+    expect(asset.to_s).to eql(".user1 {\n  color: blue; }\n\n.user2 {\n  color: red; }\n")
+    Sprockets::Sassc.options.delete(:load_paths)
+  end
+  
+  it 'same glob from different parent returns different content', :focus => false do
+    # I think there is an issue in libsass/sassc that causes it to return
+    # the same information for the same glob regardless of whether different
+    # results are returned (e.g. for different parent directories).
+    @assets.file 'main.css.scss', %(@import "user1/_all-vars";\n@import "user2/_all-vars";\n.user1 { color: $color1; };\n.user2 { color: $color2; })
+    @assets.file 'user1/_all-vars.scss', '@import "vars/*";'
+    @assets.file 'user1/vars/_user-vars.scss', '$color1: blue;'
+    
+    @assets.file 'user2/_all-vars.scss', '@import "vars/*";'
+    @assets.file 'user2/vars/_user-vars.scss', '$color2: red;'
+  
+    asset = @env['main.css']
+    expect(asset.to_s).to eql(".user1 {\n  color: blue; }\n\n.user2 {\n  color: red; }\n")
+    Sprockets::Sassc.options.delete(:load_paths)
+  end
   
   it 'allows global Sass configuration', :focus => false do
     Sprockets::Sassc.options[:style] = :compact
