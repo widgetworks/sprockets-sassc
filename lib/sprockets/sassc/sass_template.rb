@@ -1,5 +1,7 @@
 require 'tilt'
 
+require 'colorize'
+
 module Sprockets
 	module Sassc
 
@@ -88,6 +90,8 @@ module Sprockets
 			def evaluate(context, locals, &block)
 				@output ||= begin
 					@context = context
+					
+					puts "!!sass_template".red
 
 					# render the data to css and optional sourcemap
 					render_data(data, context, locals)
@@ -141,16 +145,27 @@ module Sprockets
 					importer = Importer
 				end
 
-				merge_sass_options(default_sass_options, options).merge(
+				opts = merge_sass_options(default_sass_options, options).merge(
 					:filename    => eval_file,
 					# :line        => line,
 					:syntax      => syntax,
 					:cache_store => cache_store,
 					:importer    => importer,
-
+					
 					sprockets:      { context: context },
 					:custom      => { :sprockets_context => context }
 				)
+				
+				# if opts[:inline_source_maps]
+				# 	# inline_source_maps: true,	# sassc-rails property
+				# 	opts.merge!({
+				# 		source_map_file: ".",
+				# 		source_map_embed: true,
+				# 		source_map_contents: true						
+				# 	})
+				# end
+				
+				opts
 			end
 
 			# Get the default, global Sass options. Start with Compass's

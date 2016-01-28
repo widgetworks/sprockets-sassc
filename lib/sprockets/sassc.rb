@@ -5,10 +5,12 @@ require 'sprockets/sassc/scss_template'
 require 'sprockets/engines'
 require 'sassc'
 
+# DEBUG ONLY
+require 'colorize'
+
 module Sprockets
   module Sassc
     autoload :CacheStore, 'sprockets/sassc/cache_store'
-    autoload :Compressor, 'sprockets/sassc/compressor'
     autoload :Importer,   'sprockets/sassc/importer'
 
     class << self
@@ -23,6 +25,9 @@ module Sprockets
 
     @options = {}
     @add_sass_functions = true
+    
+    puts "! using sprockets-sssc".red
+    
   end
 
   register_engine '.sass', Sassc::SassTemplate

@@ -3,8 +3,8 @@ require 'pathname'
 
 require_relative 'default_importer'
 
-# # DEBUG ONLY
-# require 'colorize'
+# DEBUG ONLY
+require 'colorize'
 
 module Sprockets
 	module Sassc
@@ -30,9 +30,11 @@ module Sprockets
 					if Pathname.new(full_path).basename.to_s.include?('.sass')
 						eval_content = SassC::Sass2Scss.convert(eval_content)
 					end
-					# puts "SprocketsExtension: eval_content=#{eval_content}"
 					
-					SassC::Importer::Import.new(full_path, source: eval_content)
+					# if sourcemap enabled...
+					source_map_path = "file:///#{full_path}"
+					
+					SassC::Importer::Import.new(full_path, source: eval_content, source_map_path: source_map_path)
 				end
 				
 				# Returns the string to be passed to the Sass engine. We use
@@ -50,7 +52,8 @@ module Sprockets
 			
 			class VirtualFile < Extension
 				def import_for(full_path, content)
-					# puts "VirtualFile: full_path=#{full_path}"
+					# puts "virtual_path= #{full_path}\ncontent=\n#{content}".cyan
+					
 					SassC::Importer::Import.new(full_path, source: content)
 				end
 			end
@@ -170,8 +173,6 @@ module Sprockets
 					}
 				}.flatten
 				
-				# puts "paths=#{paths}"
-				
 				paths
 			end
 			
@@ -222,7 +223,6 @@ module Sprockets
 				files = files.reject { |f| f == current_file }
 				
 				imports = make_import(files, base, glob, current_file)
-				# puts "imports= #{imports}"
 				return imports
 			end
 			
@@ -265,14 +265,11 @@ module Sprockets
 				import_list = []
 				files.each do |filename|
 					relative_path = Pathname.new(filename).relative_path_from(base_dir)
-					# puts "make_import: relative_path=#{relative_path.to_s}"
-					
 					import_list << "@import \"#{relative_path}\";\n"
 				end
 				
 				# Return a virtual file that will import the individual files.
 				import_content = import_list.join('')
-				# puts "import_content=#{import_content}"
 				
 				import = VIRTUAL_FILE.import_for(temp_file_name, import_content)
 				return import
