@@ -34,6 +34,8 @@ module Sprockets
 					# if sourcemap enabled...
 					source_map_path = "file:///#{full_path}"
 					
+					# puts "#{full_path}".magenta
+					
 					SassC::Importer::Import.new(full_path, source: eval_content, source_map_path: source_map_path)
 				end
 				
@@ -53,6 +55,8 @@ module Sprockets
 			class VirtualFile < Extension
 				def import_for(full_path, content)
 					# puts "virtual_path= #{full_path}\ncontent=\n#{content}".cyan
+					
+					# puts "#{full_path}".cyan
 					
 					SassC::Importer::Import.new(full_path, source: content)
 				end

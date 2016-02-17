@@ -23,10 +23,12 @@ module Sprockets
       attr_accessor :add_sass_functions
     end
 
-    @options = {}
+    @options = {
+      line_comments: true
+    }
     @add_sass_functions = true
     
-    puts "! using sprockets-sssc".red
+    puts "! Using sprockets-sassc".red
     
   end
 

@@ -91,7 +91,7 @@ module Sprockets
 				@output ||= begin
 					@context = context
 					
-					puts "!!sass_template".red
+					#puts "!!sass_template".red
 
 					# render the data to css and optional sourcemap
 					render_data(data, context, locals)
@@ -110,6 +110,9 @@ module Sprockets
 			# either with or without sourcemaps.
 			def render_data(data, context, locals)
 				if (!data.strip.empty?)
+					
+					puts eval_file.green
+					
 					# The sassc *must* be called with content, an empty string fails.
 					css = ::SassC::Engine.new(data, sass_options).render()
 				else
@@ -146,24 +149,29 @@ module Sprockets
 				end
 
 				opts = merge_sass_options(default_sass_options, options).merge(
-					:filename    => eval_file,
-					# :line        => line,
-					:syntax      => syntax,
-					:cache_store => cache_store,
-					:importer    => importer,
+					filename:       eval_file,
+					syntax:         syntax,
+					importer:       importer,
 					
+					# 2016-01-28
+					# cache_store:    cache_store,
+					
+					# Based on sassc-rails implementation.
 					sprockets:      { context: context },
-					:custom      => { :sprockets_context => context }
+					
+					# `custom.sprockets_context` is kept to be backward-compatible
+					# with sprockets-sass setup.
+					custom:         { :sprockets_context => context }
 				)
 				
-				# if opts[:inline_source_maps]
-				# 	# inline_source_maps: true,	# sassc-rails property
-				# 	opts.merge!({
-				# 		source_map_file: ".",
-				# 		source_map_embed: true,
-				# 		source_map_contents: true						
-				# 	})
-				# end
+				if opts[:inline_source_maps]
+					# inline_source_maps: true,	# sassc-rails property
+					opts.merge!({
+						source_map_file: ".",
+						source_map_embed: true,
+						source_map_contents: true						
+					})
+				end
 				
 				opts
 			end
@@ -171,15 +179,10 @@ module Sprockets
 			# Get the default, global Sass options. Start with Compass's
 			# options, if it's available.
 			def default_sass_options
-				# if defined?(Compass)
-				# 	merge_sass_options Compass.sass_engine_options.dup, Sprockets::Sassc.options
-				# else
-				# 	Sprockets::Sassc.options.dup
-				# end
-				
-				# Disable Compass defaults.
+				# Just use sassc defaults.
 				Sprockets::Sassc.options.dup
 			end
+			
 
 			# Merges two sets of `Sass::Engine` options, prepending
 			# the `:load_paths` instead of clobbering them.
@@ -189,6 +192,18 @@ module Sprockets
 				end
 				options.merge other_options
 			end
+			
+			
+			def line_comments?
+				Sprockets::Sassc.options[:line_comments]
+			end
+			
+			
+			def inline_source_maps?
+				Sprockets::Sassc.options[:inline_source_maps]
+			end
+			
+			
 		end
 	end
 end
