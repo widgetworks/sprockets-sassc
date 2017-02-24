@@ -82,6 +82,8 @@ module Sprockets
 
 			# See `Tilt::Template#prepare`.
 			def prepare
+				# puts "Sprockets::Sassc::SassTemplate"
+				
 				@context = nil
 				@output  = nil
 			end

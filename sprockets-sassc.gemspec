@@ -24,7 +24,7 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'rspec',             '~> 2.13'
   s.add_development_dependency 'test_construct',    '~> 2.0'
   s.add_development_dependency 'sprockets-helpers', '~> 1.0'
-  s.add_development_dependency 'sassc',             '~> 1.8', '>= 1.8.4'
+  s.add_development_dependency 'sassc',             '~> 1.10'
   s.add_development_dependency 'compass',           '~> 1.0.0.alpha.19'
   s.add_development_dependency 'rake'
   s.add_development_dependency 'pry'
