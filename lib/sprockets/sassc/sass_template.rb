@@ -113,7 +113,7 @@ module Sprockets
 			def render_data(data, context, locals)
 				if (!data.strip.empty?)
 					
-					puts eval_file.green
+					# puts eval_file.green
 					
 					# The sassc *must* be called with content, an empty string fails.
 					css = ::SassC::Engine.new(data, sass_options).render()
