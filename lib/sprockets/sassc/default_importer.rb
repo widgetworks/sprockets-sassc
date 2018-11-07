@@ -94,6 +94,13 @@ module SassC
                     return glob_imports(base, m[2], parent_path)
                 end
                 
+                
+                # Coridyn - raise an error instead of letting ruby fail trying to join nil with an array
+                if load_paths.nil?
+                    raise "This file:\n  #{parent_path}\n\nFailed on this import:\n\n  #{path}\n"
+                end
+                
+                
                 search_paths = ([parent_dir] + load_paths).uniq
                 
                 if specified_dir != "."

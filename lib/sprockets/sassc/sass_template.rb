@@ -1,4 +1,5 @@
 require 'tilt'
+require 'digest'
 
 require 'colorize'
 
@@ -90,13 +91,20 @@ module Sprockets
 
 			# See `Tilt::Template#evaluate`.
 			def evaluate(context, locals, &block)
+				# puts "sass_template: file=#{file}".yellow
+				# puts "sass_template: eval_file=#{eval_file}".yellow
+				
 				@output ||= begin
 					@context = context
 					
 					#puts "!!sass_template".red
 
 					# render the data to css and optional sourcemap
-					render_data(data, context, locals)
+					# puts "sass_template: pre_render"
+					result = render_data(data, context, locals)
+					# puts "sass_template: post_render"
+					
+					result
 
 				rescue ::Sass::SyntaxError => e
 					# Annotates exception message with parse line number
@@ -111,14 +119,18 @@ module Sprockets
 			# Custom method to choose how to render the file -
 			# either with or without sourcemaps.
 			def render_data(data, context, locals)
+				css = ''
+				
 				if (!data.strip.empty?)
+					
+					# data_hash = Digest::SHA256.hexdigest(data)
+					# puts "sass_template: data.length=#{data.length}"
+					# puts "sass_template: data_hash=#{data_hash}"
 					
 					# puts eval_file.green
 					
 					# The sassc *must* be called with content, an empty string fails.
 					css = ::SassC::Engine.new(data, sass_options).render()
-				else
-					css = ''
 				end
 				
 				css

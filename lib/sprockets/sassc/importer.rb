@@ -75,12 +75,51 @@ module Sprockets
 				super(options)
 				@counter = 0
 				@default_importer = ::SassC::Rails::Importer.new(options)
+				
+				@import_stack = []
 			end
 			
-
+			
 			def imports(path, parent_path)
 				
-				# puts "\nimporter: \n    path=        '#{path}'\n    parent_path= '#{parent_path}'\n"
+				@import_stack.push(path)
+				
+				begin
+					
+					# Run our custom import behaviour:
+					result = do_imports(path, parent_path)
+					
+					@import_stack.pop()
+					
+				rescue Exception
+					eff_path = parent_path.gsub(File.dirname(Dir.pwd), '')
+					
+					puts "\n\nThis file:\n  #{eff_path}\n\nFailed on this import:\n\n  #{@import_stack.join("\n")}\n".red
+					raise
+				end
+				
+				return result
+			end
+			
+			
+			def do_imports(path, parent_path)
+				
+				# puts "\nimporter: \n    path=        '#{path}'\n    parent_path= '#{parent_path}'\n".cyan
+				
+				
+				# 2018-11-07 Add trim_import_chars for future Webpack compatibility.
+				# `sass-loader` uses Webpack to resolve all import statements.
+				# To allow cross-project imports in Webpack (e.g. `import "wiwo-shared-lib/stylesheets/vars/_my-vars";`)
+				# we need to prefix all our projects with special charactersL `~#` i.e. import "~#wiwo-shared-lib/stylesheets/vars/_my-vars"
+				# The tilde tells Webpack we're importing from a module, and then we set up an alias for every project that takes
+				# "#wiwo-shared-lib" and expands it to the full "build/vendor/assets/wiwo-shared-lib/dist/src/wiwo-shared-lib" import path.
+				# 
+				# The trim_import_chars config lets us migrate all existing Sass projects to use the new ~# prefix whilst still
+				# working with Sprockets/Machined. This should help with the migration process :)
+				if (options[:trim_import_chars])
+					path.gsub!(options[:trim_import_chars], '')
+				end
+				
 				
 				# Resolve a glob
 				if (m = path.match(GLOB))
@@ -97,11 +136,11 @@ module Sprockets
 				end
 				
 				# Resolve a single file
-				imports = import_file(path, parent_path)
+				result = import_file(path, parent_path)
 				
-				# puts "found_path= #{imports.path}".green
+				# puts "found_path= #{result.path}".green
 				
-				imports
+				result
 			end
 			
 			

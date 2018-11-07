@@ -23,8 +23,13 @@ module Sprockets
       attr_accessor :add_sass_functions
     end
 
+    ##
+    # 2018-11-07
+    # Add `trim_import_chars` 
+    ##
     @options = {
-      line_comments: true
+      line_comments: true,
+      trim_import_chars: /^~#/
     }
     @add_sass_functions = true
     
